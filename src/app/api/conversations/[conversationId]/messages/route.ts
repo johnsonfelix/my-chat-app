@@ -90,7 +90,7 @@ export async function POST(
     }
 
     return NextResponse.json(message, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 400 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e }, { status: 400 });
   }
 }

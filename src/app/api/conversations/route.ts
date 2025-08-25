@@ -31,8 +31,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(conversation, { status: 201 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 400 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e }, { status: 400 });
   }
 }
 
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
     });
 
     return NextResponse.json(conversations, { status: 200 });
-  } catch (e: any) {
+  } catch (e: unknown) {
     // Log the error server-side and respond with a safe JSON error
     console.error('GET /api/conversations error', e);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

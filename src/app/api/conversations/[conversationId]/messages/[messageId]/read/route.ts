@@ -41,7 +41,7 @@ export async function POST(
     }
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 400 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: e }, { status: 400 });
   }
 }
