@@ -44,6 +44,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'companyId required' }, { status: 400 });
     }
 
+    // Include full participants (avoid unknown select properties)
     const conversations = await prisma.conversation.findMany({
       where: {
         participants: {
@@ -52,13 +53,34 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { updatedAt: 'desc' },
       include: {
-  participants: { select: { id: true, name: true, logoUrl: true } },
-},
+        participants: true, // include full participants object
+      },
     });
 
-    return NextResponse.json(conversations, { status: 200 });
+    // Normalize participants to always provide `logoUrl` (try common field names)
+    const normalized = conversations.map((conv) => {
+      // conv.participants might be strongly typed; cast to `any` for safe mapping
+      const participants = ((conv as any).participants || []).map((p: any) => {
+        return {
+          id: p.id,
+          name: p.name ?? null,
+          // Try multiple common DB/Prisma field names and fall back to null
+          logoUrl: p.logoUrl ?? p.logo ?? p.logo_url ?? p.avatarUrl ?? p.avatar ?? null,
+        };
+      });
+
+      // Spread conv but replace participants with the normalized array.
+      // Convert any `Date` objects to ISO strings (JSON.stringify will do this, but being explicit avoids surprises)
+      const safeConv: any = {
+        ...conv,
+        participants,
+      };
+
+      return safeConv;
+    });
+
+    return NextResponse.json(normalized, { status: 200 });
   } catch (e: unknown) {
-    // Log the error server-side and respond with a safe JSON error
     console.error('GET /api/conversations error', e);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
