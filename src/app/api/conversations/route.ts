@@ -52,8 +52,8 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { updatedAt: 'desc' },
       include: {
-        participants: { select: { id: true, name: true, logoUrl: true, } },
-      },
+  participants: { select: { id: true, name: true, logoUrl: true } },
+},
     });
 
     return NextResponse.json(conversations, { status: 200 });
