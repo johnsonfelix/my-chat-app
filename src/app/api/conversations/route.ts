@@ -1,7 +1,7 @@
-// app/api/conversations/route.ts
 import { prisma } from '@/app/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
+import type { Prisma } from '@prisma/client';
 
 const createSchema = z.object({
   participantCompanyIds: z.array(z.string()).min(2),
@@ -44,8 +44,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'companyId required' }, { status: 400 });
     }
 
-    // Include full participants (avoid unknown select properties)
-    const conversations = await prisma.conversation.findMany({
+    // Use Prisma's typed payload for include: { participants: true }
+    const conversations = (await prisma.conversation.findMany({
       where: {
         participants: {
           some: { id: companyId },
@@ -53,30 +53,34 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { updatedAt: 'desc' },
       include: {
-        participants: true, // include full participants object
+        participants: true,
       },
-    });
+    })) as Prisma.ConversationGetPayload<{ include: { participants: true } }>[]; 
 
-    // Normalize participants to always provide `logoUrl` (try common field names)
+    // Normalize participants to always provide `logoUrl`
     const normalized = conversations.map((conv) => {
-      // conv.participants might be strongly typed; cast to `any` for safe mapping
-      const participants = ((conv as any).participants || []).map((p: any) => {
+      // Each participant is typed from Prisma; convert to flexible record to probe possible fields
+      const participants = conv.participants.map((p) => {
+        const pRec = p as unknown as Record<string, unknown>;
+
+        const logoUrlCandidate =
+          (pRec['logoUrl'] ?? pRec['logo'] ?? pRec['logo_url'] ?? pRec['avatarUrl'] ?? pRec['avatar']) ??
+          null;
+
+        const logoUrl = typeof logoUrlCandidate === 'string' ? logoUrlCandidate : null;
+
         return {
           id: p.id,
           name: p.name ?? null,
-          // Try multiple common DB/Prisma field names and fall back to null
-          logoUrl: p.logoUrl ?? p.logo ?? p.logo_url ?? p.avatarUrl ?? p.avatar ?? null,
+          logoUrl,
         };
       });
 
-      // Spread conv but replace participants with the normalized array.
-      // Convert any `Date` objects to ISO strings (JSON.stringify will do this, but being explicit avoids surprises)
-      const safeConv: any = {
+      // Return conversation with normalized participants
+      return {
         ...conv,
         participants,
       };
-
-      return safeConv;
     });
 
     return NextResponse.json(normalized, { status: 200 });
