@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
       },
       orderBy: { updatedAt: 'desc' },
       include: {
-        participants: { select: { id: true, name: true } },
+        participants: { select: { id: true, name: true, logoUrl: true, } },
       },
     });
 

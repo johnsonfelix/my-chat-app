@@ -27,6 +27,7 @@ model Company {
   about       String?
   memberSince DateTime?
   location    Location?
+  logoUrl     String?
 
   services         Service[]         @relation("CompanyServices")
   partners         Partner[]         @relation("CompanyPartners")
