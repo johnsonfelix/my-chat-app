@@ -1,13 +1,8 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
-  provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/client"
+  provider      = "prisma-client-js"
+  output        = "../node_modules/.prisma/client"
   binaryTargets = ["native", "rhel-openssl-1.0.x"]
 }
-
-
 
 datasource db {
   provider  = "postgresql"
@@ -16,37 +11,57 @@ datasource db {
 }
 
 model Company {
-  id          String    @id @default(cuid())
-  memberId    String    @unique
-  memberType  String?
-  sector      String?
-  name        String
-  website     String?
-  established DateTime?
-  size        String?
-  about       String?
-  memberSince DateTime?
-  location    Location?
-  logoUrl     String?
-
-  services         Service[]         @relation("CompanyServices")
-  partners         Partner[]         @relation("CompanyPartners")
-  certificates     Certificate[]     @relation("CompanyCertificates")
-  media            Media[]           @relation("CompanyMedia")
-  activities       Activity[]        @relation("CompanyActivities")
-  inquiry          Inquiry[]         @relation("CompanyInquiry")
-  inquiryResponses InquiryResponse[] @relation("ResponderCompany")
-  purchaseOrders PurchaseOrder[]
-
-  user   User?   @relation("UserCompanies", fields: [userId], references: [id])
-  userId String?
-
-  conversations    Conversation[] @relation("CompanyConversations")
-  sentMessages     Message[]      @relation("SentMessages")
-  readMessages     Message[]      @relation("ReadMessages")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                    String            @id @default(cuid())
+  memberId              String            @unique
+  memberType            String?
+  name                  String
+  website               String?
+  established           DateTime?
+  size                  String?
+  about                 String?
+  memberSince           DateTime?
+  userId                String?
+  memberFromYear        Int?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  sector                String?
+  taxNumber             String?
+  logoUrl               String?
+  purchasedMembership   String?
+  isVerified            Boolean           @default(false)
+  isActive              Boolean           @default(true)
+  status                CompanyStatus     @default(LIVE)
+  zipCode               String?
+  membershipExpiresAt   DateTime?
+  purchasedAt           DateTime?
+  purchasedMembershipId String?
+  membershipPlanId      String?
+  directors             String?
+  designation           String?
+  participationYears    String?
+  scopeOfBusiness       String?
+  servicesOffered       String?
+  membershipPlan        MembershipPlan?   @relation(fields: [membershipPlanId], references: [id])
+  user                  User?             @relation("UserCompanies", fields: [userId], references: [id])
+  inquiry               Inquiry[]         @relation("CompanyInquiry")
+  inquiryResponses      InquiryResponse[] @relation("ResponderCompany")
+  location              Location?
+  sentMessages          Message[]         @relation("SentMessages")
+  purchaseOrders        PurchaseOrder[]
+  reports               Report[]
+  activities            Activity[]        @relation("CompanyActivities")
+  certificates          Certificate[]     @relation("CompanyCertificates")
+  conversations         Conversation[]    @relation("CompanyConversations")
+  media                 Media[]           @relation("CompanyMedia")
+  partners              Partner[]         @relation("CompanyPartners")
+  services              Service[]         @relation("CompanyServices")
+  readMessages          Message[]         @relation("ReadMessages")
+  meetingSessions       MeetingSession[]
+  meetingSessionsB      MeetingSession[] @relation("CompanyBMeetings")
+  sentMeetingRequests   MeetingRequest[] @relation("SentMeetingRequests")
+  receivedMeetingRequests MeetingRequest[] @relation("ReceivedMeetingRequests")
+  blockedMeetingSlots     BlockedMeetingSlot[]
+  branches              Branch[]
 }
 
 model Service {
@@ -55,18 +70,30 @@ model Service {
   companies Company[] @relation("CompanyServices")
 }
 
+model Branch {
+  id            String   @id @default(cuid())
+  name          String
+  address       String?
+  city          String?
+  country       String?
+  contactPerson String?
+  phone         String?
+  email         String?
+  companyId     String
+  userId        String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  company       Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user          User?    @relation("BranchUser", fields: [userId], references: [id])
+
+  @@index([companyId])
+}
+
 model Partner {
   id        String      @id @default(cuid())
   name      String
   type      PartnerType
   companies Company[]   @relation("CompanyPartners")
-}
-
-enum PartnerType {
-  AIR
-  SEA
-  RAIL
-  COURIER
 }
 
 model Certificate {
@@ -86,13 +113,6 @@ model Media {
   companies Company[] @relation("CompanyMedia")
 }
 
-enum MediaType {
-  IMAGE
-  VIDEO
-  DOCUMENT
-  LOGO
-}
-
 model Activity {
   id          String    @id @default(cuid())
   eventDate   DateTime
@@ -102,89 +122,93 @@ model Activity {
 }
 
 model Location {
-  id      String  @id @default(cuid())
-  address String
-  city    String
-  state   String?
-  country String
-  zipCode String?
-  phone   String?
-  fax     String?
-  email   String?
-
-  company   Company @relation(fields: [companyId], references: [id])
-  companyId String  @unique
+  id                       String  @id @default(cuid())
+  address                  String
+  city                     String
+  state                    String?
+  country                  String
+  zipCode                  String?
+  phone                    String?
+  fax                      String?
+  email                    String?
+  companyId                String  @unique
+  contactPerson            String?
+  mobile                   String?
+  skype                    String?
+  wechat                   String?
+  contactPersonDesignation String?
+  company                  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  password  String
-  name      String?
-  role      Role      @default(USER)
-  companies Company[] @relation("UserCompanies")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-enum Role {
-  USER
-  ADMIN
-  MODERATOR
+  id               String    @id @default(cuid())
+  email            String    @unique
+  password         String
+  name             String?
+  role             Role      @default(USER)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  isCompleted      Boolean   @default(false)
+  phone            String?
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  companies        Company[] @relation("UserCompanies")
+  branch           Branch?   @relation("BranchUser")
 }
 
 model Event {
-  id               String     @id @default(cuid())
-  name             String
-  startDate        DateTime?
-  endDate          DateTime?
-  location         String
-  thumbnail        String
-  eventType        EventType?
-  expectedAudience String
-  description      String?
-
-  booths Booth[] @relation("EventBooths")
-  hotels Hotel[] @relation("EventHotels")
-
-  eventTickets      EventTicket[]      @relation("EventTickets")
-  eventSponsorTypes EventSponsorType[] @relation("EventSponsorTypes")
+  id                String             @id @default(cuid())
+  name              String
+  location          String
+  thumbnail         String
+  expectedAudience  String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  endDate           DateTime?
+  eventType         EventType?
+  startDate         DateTime?
+  description       String?
+  agendaItems       AgendaItem[]
+  earlyBird         Boolean            @default(false)
+  boothSubTypes     BoothSubType[]
+  eventBooths       EventBooth[]
   eventRoomTypes    EventRoomType[]    @relation("EventRoomTypes")
-
-  agendaItems AgendaItem[]
-  venue       Venue?
-  boothSubTypes  BoothSubType[]
-  purchaseOrders PurchaseOrder[]
-
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-enum EventType {
-  Hot
-  New
+  eventSponsorTypes EventSponsorType[] @relation("EventSponsorTypes")
+  eventTickets      EventTicket[]      @relation("EventTickets")
+  purchaseOrders    PurchaseOrder[]
+  venue             Venue?
+  hotels            Hotel[]            @relation("EventHotels")
+  meetingSlots      MeetingSlot[]
+  meetingRequests   MeetingRequest[]
+  blockedMeetingSlots BlockedMeetingSlot[]
+  reviews           EventReview[]
 }
 
 model SponsorType {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  image       String?
-  description String?
-  price       Float
-
+  id                String             @id @default(cuid())
+  name              String             @unique
+  image             String?
+  price             Float
+  createdAt         DateTime           @default(now())
+  imageKey          String?
+  updatedAt         DateTime           @updatedAt
+  description       String?
+  sortOrder         Int                @default(0)
+  features          String[]           @default([])
   eventSponsorTypes EventSponsorType[] @relation("EventSponsorTypes")
+  offers            Offer[]            @relation("OfferSponsorTypes")
 }
 
 model Ticket {
-  id          String  @id @default(cuid())
-  name        String
-  logo        String
-  price       Float
-  description String?
-
+  id           String        @id @default(cuid())
+  name         String
+  logo         String
+  price        Float
+  description  String?
+  sellingPrice Float?
+  features     String[]      @default([])
   eventTickets EventTicket[] @relation("EventTickets")
+  offers       Offer[]       @relation("OfferTickets")
 }
 
 model Hotel {
@@ -196,93 +220,317 @@ model Hotel {
   contactPerson String?
   email         String?
   roomTypes     RoomType[]
-
-  events Event[] @relation("EventHotels")
+  events        Event[]    @relation("EventHotels")
+  offers        Offer[]    @relation("OfferHotels")
 }
 
 model RoomType {
-  id             String  @id @default(cuid())
+  id             String          @id @default(cuid())
   hotelId        String
-  hotel          Hotel   @relation(fields: [hotelId], references: [id])
-  roomType       String // e.g., Deluxe, Suite, Standard
+  roomType       String
   price          Float
-  availableRooms Int // number of rooms available
-  maxOccupancy   Int // maximum persons per room
-  amenities      String? // comma-separated or JSON
-  image          String? // optional room image
-
+  availableRooms Int
+  maxOccupancy   Int
+  amenities      String?
+  image          String?
   eventRoomTypes EventRoomType[] @relation("EventRoomTypes")
+  hotel          Hotel           @relation(fields: [hotelId], references: [id], onDelete: Cascade)
 }
 
 model Booth {
-  id          String  @id @default(cuid())
-  name        String
+  id          String         @id @default(cuid())
   image       String
   price       Float
   description String?
-  subTypes  BoothSubType[]
+  name        String
+  subTypes    BoothSubType[]
+  eventBooths EventBooth[]
+  offers      Offer[]        @relation("OfferBooths")
+}
 
-  events Event[] @relation("EventBooths")
+model EventBooth {
+  eventId  String
+  boothId  String
+  quantity Int    @default(1)
+  booth    Booth  @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, boothId])
+  @@index([boothId])
 }
 
 model AgendaItem {
   id          String   @id @default(cuid())
   date        DateTime
-  startTime   DateTime
-  endTime     DateTime
   title       String
   description String?
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  startTime   DateTime
+  endTime     DateTime
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model Venue {
   id              String   @id @default(cuid())
   name            String
   description     String?
-  imageUrls       String[] // for gallery
+  imageUrls       String[]
   closestAirport  String?
   publicTransport String?
-  nearbyPlaces    String? // e.g., "Beach, Mall, Museum"
-  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  nearbyPlaces    String?
   eventId         String   @unique
+  location        String?
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 }
 
 model Inquiry {
   id             String            @id @default(cuid())
-  companyId      String
-  company        Company           @relation("CompanyInquiry", fields: [companyId], references: [id])
-  from           String
-  to             String
-  commodity      String
-  shipmentMode   shipmentMode
   cargoType      String
-  weight         Float?
-  volume         Float?
+  createdAt      DateTime          @default(now())
   cargoReadyTime DateTime?
+  commodity      String
+  companyId      String
+  contactEmail   String?
+  contactName    String?
+  contactPhone   String?
+  dimensions     String?
   freightTerm    String?
+  from           String
   incoterms      String?
   remark         String?
-  dimensions     String?
-  contactName    String?
-  contactEmail   String?
-  contactPhone   String?
+  shipmentMode   shipmentMode
+  to             String
+  volume         Float?
+  weight         Float?
+  company        Company           @relation("CompanyInquiry", fields: [companyId], references: [id], onDelete: Cascade)
   responses      InquiryResponse[]
-  createdAt      DateTime          @default(now())
 }
 
 model InquiryResponse {
   id          String   @id @default(cuid())
-  inquiry     Inquiry  @relation(fields: [inquiryId], references: [id])
   inquiryId   String
-  responder   Company  @relation("ResponderCompany", fields: [responderId], references: [id])
   responderId String
   message     String
   offerPrice  Float?
-  attachment  String? // URL to quote/proposal doc
+  attachment  String?
   createdAt   DateTime @default(now())
+  inquiry     Inquiry  @relation(fields: [inquiryId], references: [id])
+  responder   Company  @relation("ResponderCompany", fields: [responderId], references: [id], onDelete: Cascade)
+}
+
+model EventTicket {
+  eventId  String
+  ticketId String
+  quantity Int    @default(1)
+  event    Event  @relation("EventTickets", fields: [eventId], references: [id], onDelete: Cascade)
+  ticket   Ticket @relation("EventTickets", fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, ticketId])
+}
+
+model EventSponsorType {
+  eventId       String
+  sponsorTypeId String
+  quantity      Int         @default(1)
+  event         Event       @relation("EventSponsorTypes", fields: [eventId], references: [id], onDelete: Cascade)
+  sponsorType   SponsorType @relation("EventSponsorTypes", fields: [sponsorTypeId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, sponsorTypeId])
+}
+
+model EventRoomType {
+  eventId    String
+  roomTypeId String
+  quantity   Int      @default(1)
+  event      Event    @relation("EventRoomTypes", fields: [eventId], references: [id], onDelete: Cascade)
+  roomType   RoomType @relation("EventRoomTypes", fields: [roomTypeId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, roomTypeId])
+}
+
+model BoothSubType {
+  id          String           @id @default(cuid())
+  name        String
+  price       Float
+  description String?
+  boothId     String
+  eventId     String
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  isAvailable Boolean          @default(true)
+  slotEnd     DateTime?
+  slotStart   DateTime?
+  type        BoothSubTypeType @default(BOOTH_NUMBER)
+  booth       Booth            @relation(fields: [boothId], references: [id], onDelete: Cascade)
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([boothId, eventId, name])
+}
+
+model PurchaseOrder {
+  id                   String      @id @default(cuid())
+  companyId            String
+  eventId              String?
+  totalAmount          Float
+  status               OrderStatus @default(COMPLETED)
+  createdAt            DateTime    @default(now())
+  invoiceNumber        Int         @default(autoincrement())
+  couponId             String?
+  discountAmount       Float?
+  billingAddressLine1  String?
+  billingAddressLine2  String?
+  billingCity          String?
+  billingCountry       String?
+  billingState         String?
+  billingZip           String?
+  shippingAddressLine1 String?
+  shippingAddressLine2 String?
+  shippingCity         String?
+  shippingCountry      String?
+  shippingState        String?
+  shippingZip          String?
+  offlinePayment       Boolean     @default(false)
+  account              Json?
+  additionalDetails    Json?
+  paymentMethod        String?
+  paymentProof         String?
+  items                OrderItem[]
+  company              Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  coupon               Coupon?     @relation(fields: [couponId], references: [id])
+  event                Event?      @relation(fields: [eventId], references: [id])
+
+  @@index([companyId])
+  @@index([eventId])
+}
+
+model OrderItem {
+  id             String        @id @default(cuid())
+  orderId        String
+  productId      String
+  productType    String
+  name           String
+  quantity       Int
+  price          Float
+  roomTypeId     String?
+  boothSubTypeId String?
+  createdAt      DateTime      @default(now())
+  order          PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+model Conversation {
+  id              String    @id @default(cuid())
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  lastMessageText String?
+  lastMessageAt   DateTime?
+  messages        Message[]
+  participants    Company[] @relation("CompanyConversations")
+
+  @@index([updatedAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  content        String
+  senderId       String
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         Company      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  readBy         Company[]    @relation("ReadMessages")
+
+  @@index([conversationId])
+  @@index([senderId])
+}
+
+model MembershipPlan {
+  id                 String    @id @default(cuid())
+  name               String    @unique
+  slug               String?   @unique
+  price              Float
+  features           String[]
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  description        String?
+  thumbnail          String?
+  paymentProtection  String?
+  discountPercentage Float?
+  companies          Company[]
+  offers             Offer[]   @relation("OfferMembershipPlans")
+}
+
+model Coupon {
+  id             String          @id @default(cuid())
+  code           String          @unique
+  discountType   DiscountType
+  discountValue  Float
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  purchaseOrders PurchaseOrder[]
+}
+
+model Offer {
+  id              String           @id @default(cuid())
+  name            String
+  code            String?          @unique
+  description     String?
+  percentage      Float
+  scope           OfferScope       @default(ALL)
+  startsAt        DateTime?
+  endsAt          DateTime?
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  booths          Booth[]          @relation("OfferBooths")
+  hotels          Hotel[]          @relation("OfferHotels")
+  membershipPlans MembershipPlan[] @relation("OfferMembershipPlans")
+  sponsorTypes    SponsorType[]    @relation("OfferSponsorTypes")
+  tickets         Ticket[]         @relation("OfferTickets")
+}
+
+model Report {
+  id                String       @id @default(cuid())
+  reportedCompanyId String
+  reason            String
+  status            ReportStatus @default(PENDING)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  reportedCompany   Company      @relation(fields: [reportedCompanyId], references: [id], onDelete: Cascade)
+}
+
+enum CompanyStatus {
+  LIVE
+  BLOCKLISTED
+  SUSPENDED
+}
+
+enum PartnerType {
+  AIR
+  SEA
+  RAIL
+  COURIER
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  LOGO
+}
+
+enum Role {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum EventType {
+  Hot
+  New
 }
 
 enum shipmentMode {
@@ -291,72 +539,10 @@ enum shipmentMode {
   LAND
 }
 
-model EventTicket {
-  eventId  String
-  ticketId String
-  quantity Int    @default(1)
-
-  event  Event  @relation("EventTickets", fields: [eventId], references: [id], onDelete: Cascade)
-  ticket Ticket @relation("EventTickets", fields: [ticketId], references: [id], onDelete: Cascade)
-
-  @@id([eventId, ticketId])
-}
-
-model EventSponsorType {
-  eventId       String
-  sponsorTypeId String
-  quantity      Int    @default(1)
-
-  event       Event       @relation("EventSponsorTypes", fields: [eventId], references: [id], onDelete: Cascade)
-  sponsorType SponsorType @relation("EventSponsorTypes", fields: [sponsorTypeId], references: [id], onDelete: Cascade)
-
-  @@id([eventId, sponsorTypeId])
-}
-
-model EventRoomType {
-  eventId    String
-  roomTypeId String
-  quantity   Int    @default(1)
-
-  event    Event    @relation("EventRoomTypes", fields: [eventId], references: [id], onDelete: Cascade)
-  roomType RoomType @relation("EventRoomTypes", fields: [roomTypeId], references: [id], onDelete: Cascade)
-
-  @@id([eventId, roomTypeId])
-}
-
-model BoothSubType {
-  id          String   @id @default(cuid())
-  name        String
-  price       Float
-  description String?
-
-  boothId     String
-  eventId     String
-
-  booth       Booth    @relation(fields: [boothId], references: [id], onDelete: Cascade)
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  isAvailable Boolean  @default(true)
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@unique([boothId, eventId, name])
-}
-
-model PurchaseOrder {
-  id          String      @id @default(cuid())
-  companyId   String      // The company that made the purchase
-  company     Company     @relation(fields: [companyId], references: [id])
-  eventId     String      // The event for which the purchase was made
-  event       Event       @relation(fields: [eventId], references: [id])
-  totalAmount Float
-  status      OrderStatus @default(COMPLETED) // Or you could have PENDING, FAILED
-  createdAt   DateTime    @default(now())
-
-  items OrderItem[] // All items included in this order
-
-  @@index([companyId])
-  @@index([eventId])
+enum BoothSubTypeType {
+  BOOTH_NUMBER
+  TIME_SLOT
+  CUSTOM
 }
 
 enum OrderStatus {
@@ -366,60 +552,182 @@ enum OrderStatus {
   REFUNDED
 }
 
-model OrderItem {
+enum DiscountType {
+  FIXED
+  PERCENTAGE
+}
+
+enum OfferScope {
+  ALL
+  HOTELS
+  TICKETS
+  SPONSORS
+  CUSTOM
+  BOOTHS
+  SUBSCRIPTIONS
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+}
+
+model Testimonial {
+  id          String   @id @default(cuid())
+  name        String
+  role        String
+  description String
+  rating      Int      @default(5)
+  image       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PastEvent {
+  id              String   @id @default(cuid())
+  title           String
+  place           String
+  date            String
+  membersAttended Int
+  description     String   @db.Text
+  mainImage       String
+  carouselImages  String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model ManualInvoice {
+  id              String   @id @default(cuid())
+  sequence        Int      @default(autoincrement())
+  invoiceNumber   String   @unique
+  date            DateTime
+  customerDetails Json
+  items           Json
+  totalAmount     Float
+  currency        String   @default("USD")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SiteVisit {
   id        String   @id @default(cuid())
-  orderId   String
-  order     PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  productId   String // ID of the Ticket, SponsorType, Hotel, or Booth
-  productType String // "TICKET", "SPONSOR", "HOTEL", "BOOTH"
-  name        String // Name of the item at time of purchase
-  quantity    Int
-  price       Float    // Price per item at time of purchase
-
-  // Optional fields for specific product types
-  roomTypeId     String?
-  boothSubTypeId String?
-
+  sessionId String
+  page      String
+  referrer  String?
+  ip        String?
+  country   String?
+  city      String?
+  device    String?
+  browser   String?
+  os        String?
+  duration  Int      @default(0)
   createdAt DateTime @default(now())
-  @@index([orderId])
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([country])
 }
 
-model Conversation {
-  id        String    @id @default(cuid())
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  
-  // A conversation involves multiple companies
-  participants Company[] @relation("CompanyConversations")
-  
-  // A conversation has many messages
-  messages     Message[]
-  
-  // Optional: Store the last message for easy preview on the conversation list
-  lastMessageText String?
-  lastMessageAt   DateTime?
-  
-  @@index([updatedAt])
+model MeetingSlot {
+  id              String           @id @default(cuid())
+  eventId         String
+  title           String           @default("One-to-One Meeting")
+  startTime       DateTime
+  endTime         DateTime
+  sessions        Int              @default(1)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  event           Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  meetingSessions MeetingSession[]
+  meetingRequests MeetingRequest[]
+  blockedMeetingSlots BlockedMeetingSlot[]
+
+  @@index([eventId])
 }
 
-model Message {
-  id        String    @id @default(cuid())
-  createdAt DateTime  @default(now())
-  content   String
-  
-  // The company that sent the message
-  senderId  String
-  sender    Company   @relation("SentMessages", fields: [senderId], references: [id])
-  
-  // The conversation this message belongs to
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
-  // Keep track of which recipients have read the message
-  readBy         Company[] @relation("ReadMessages")
-  
-  @@index([conversationId])
-  @@index([senderId])
+model MeetingSession {
+  id            String       @id @default(cuid())
+  meetingSlotId String
+  sessionIndex  Int
+  startTime     DateTime
+  endTime       DateTime
+  companyId     String?
+  companyBId    String?
+  table         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  meetingSlot   MeetingSlot  @relation(fields: [meetingSlotId], references: [id], onDelete: Cascade)
+  company       Company?     @relation(fields: [companyId], references: [id])
+  companyB      Company?     @relation("CompanyBMeetings", fields: [companyBId], references: [id])
+
+  @@index([meetingSlotId])
+}
+
+model MeetingRequest {
+  id               String         @id @default(cuid())
+  eventId          String
+  meetingSlotId    String
+  fromCompanyId    String
+  toCompanyId      String
+  status           RequestStatus  @default(PENDING)
+  message          String?
+  declineReason    String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  event            Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  meetingSlot      MeetingSlot    @relation(fields: [meetingSlotId], references: [id], onDelete: Cascade)
+  fromCompany      Company        @relation("SentMeetingRequests", fields: [fromCompanyId], references: [id])
+  toCompany        Company        @relation("ReceivedMeetingRequests", fields: [toCompanyId], references: [id])
+
+  @@unique([meetingSlotId, fromCompanyId, toCompanyId])
+  @@index([eventId])
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model BlockedMeetingSlot {
+  id              String       @id @default(cuid())
+  eventId         String
+  meetingSlotId   String
+  companyId       String
+  createdAt       DateTime     @default(now())
+
+  company         Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  event           Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  meetingSlot     MeetingSlot  @relation(fields: [meetingSlotId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, meetingSlotId])
+  @@index([eventId])
+}
+
+model EventReview {
+  id           String   @id @default(cuid())
+  eventId      String
+  reviewerName String
+  companyName  String
+  rating       Int      @default(5)
+  feedback     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+model DeviceToken {
+  id        String   @id @default(cuid())
+  companyId String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }
 

@@ -1,5 +1,7 @@
 // app/api/conversations/[conversationId]/messages/route.ts
 import { prisma } from '@/app/lib/prisma';
+import { getFirebaseApp } from '@/app/lib/firebaseAdmin';
+import { getMessaging } from 'firebase-admin/messaging';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -87,6 +89,51 @@ export async function POST(
           lastMessageAt: new Date().toISOString(),
         });
       });
+    }
+
+    // Dispatch FCM Push Notification to offline/closed devices
+    try {
+      const recipientIds = convo.participants
+        .filter((p) => p.id !== senderId)
+        .map((p) => p.id);
+
+      if (recipientIds.length > 0) {
+        const deviceTokens = await prisma.deviceToken.findMany({
+          where: { companyId: { in: recipientIds } },
+          select: { token: true },
+        });
+
+        const tokens = deviceTokens.map((dt) => dt.token).filter(Boolean);
+        if (tokens.length > 0) {
+          const fbApp = getFirebaseApp();
+          if (fbApp) {
+            const senderName = message.sender?.name || 'New Message';
+            await getMessaging(fbApp).sendEachForMulticast({
+              tokens,
+              notification: {
+                title: senderName,
+                body: content,
+              },
+              data: {
+                conversationId: String(conversationId),
+                senderId: String(senderId),
+                senderName: String(senderName),
+                content: String(content),
+              },
+              android: {
+                priority: 'high',
+                notification: {
+                  channelId: 'chat_messages_channel',
+                  priority: 'high',
+                  sound: 'default',
+                },
+              },
+            });
+          }
+        }
+      }
+    } catch (fcmErr) {
+      console.error('FCM Push Notification error:', fcmErr);
     }
 
     return NextResponse.json(message, { status: 201 });
