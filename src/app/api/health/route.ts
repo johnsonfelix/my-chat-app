@@ -6,14 +6,14 @@ export async function GET() {
   const hasDbUrl = Boolean(process.env.DATABASE_URL);
   const hasFirebaseKey = Boolean(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
   let dbStatus = 'untested';
-  let dbError = null;
+  let dbError: string | null = null;
 
   try {
     const count = await prisma.company.count();
     dbStatus = `connected (companies: ${count})`;
-  } catch (err: any) {
+  } catch (err: unknown) {
     dbStatus = 'failed';
-    dbError = err?.message || String(err);
+    dbError = err instanceof Error ? err.message : String(err);
   }
 
   const fbApp = getFirebaseApp();

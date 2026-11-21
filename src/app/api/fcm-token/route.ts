@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Error saving device token:', error);
-    return NextResponse.json({ error: error?.message || 'Failed to save token' }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error saving device token:', message);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
